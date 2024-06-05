@@ -6,8 +6,10 @@ Sub MapJiraIssues()
     Dim lastRowExport As Long
     Dim i As Long, j As Long
     Dim jiraKey As String
+    Dim components As Variant
     Dim component As String
     Dim relatedJiras As String
+    Dim k As Long
     
     ' Set worksheets
     Set wsJira = ThisWorkbook.Sheets("jira")
@@ -25,18 +27,27 @@ Sub MapJiraIssues()
         
         ' Loop through each row in the jira sheet
         For j = 2 To lastRowJira
-            ' Check if the component matches any in the jira sheet
-            If InStr(1, wsJira.Cells(j, "C").Value, component, vbTextCompare) > 0 Then
-                ' If match found, get the Jira issue key
-                jiraKey = wsJira.Cells(j, "B").Value
-                
-                ' Append the Jira issue key to relatedJiras
-                If relatedJiras = "" Then
-                    relatedJiras = jiraKey
-                Else
-                    relatedJiras = relatedJiras & ", " & jiraKey
+            ' Split the components in the jira sheet into an array
+            components = Split(wsJira.Cells(j, "C").Value, ", ")
+            
+            ' Loop through the components array
+            For k = LBound(components) To UBound(components)
+                ' Check for exact match of the component
+                If Trim(components(k)) = component Then
+                    ' If match found, get the Jira issue key
+                    jiraKey = wsJira.Cells(j, "B").Value
+                    
+                    ' Append the Jira issue key to relatedJiras
+                    If relatedJiras = "" Then
+                        relatedJiras = jiraKey
+                    Else
+                        relatedJiras = relatedJiras & ", " & jiraKey
+                    End If
+                    
+                    ' Exit the loop as we found the exact match
+                    Exit For
                 End If
-            End If
+            Next k
         Next j
         
         ' Write the related Jira keys to column CX in the export sheet
