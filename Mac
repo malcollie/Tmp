@@ -1,0 +1,49 @@
+Sub MapJiraIssues()
+    ' Declare variables
+    Dim wsJira As Worksheet
+    Dim wsExport As Worksheet
+    Dim lastRowJira As Long
+    Dim lastRowExport As Long
+    Dim i As Long, j As Long
+    Dim jiraKey As String
+    Dim component As String
+    Dim cell As Range
+    Dim relatedJiras As String
+    
+    ' Set worksheets
+    Set wsJira = ThisWorkbook.Sheets("jira")
+    Set wsExport = ThisWorkbook.Sheets("export")
+    
+    ' Find the last row with data in each sheet
+    lastRowJira = wsJira.Cells(wsJira.Rows.Count, "B").End(xlUp).Row
+    lastRowExport = wsExport.Cells(wsExport.Rows.Count, "A").End(xlUp).Row
+    
+    ' Loop through each row in the export sheet
+    For i = 2 To lastRowExport
+        ' Get the component from the export sheet
+        component = wsExport.Cells(i, "A").Value
+        relatedJiras = "" ' Initialize relatedJiras as an empty string
+        
+        ' Loop through each row in the jira sheet
+        For j = 2 To lastRowJira
+            ' Check if the component matches any in the jira sheet
+            If wsJira.Cells(j, "C").Value Like "*" & component & "*" Then
+                ' If match found, get the Jira issue key
+                jiraKey = wsJira.Cells(j, "B").Value
+                
+                ' Append the Jira issue key to relatedJiras
+                If relatedJiras = "" Then
+                    relatedJiras = jiraKey
+                Else
+                    relatedJiras = relatedJiras & ", " & jiraKey
+                End If
+            End If
+        Next j
+        
+        ' Write the related Jira keys to column CX in the export sheet
+        wsExport.Cells(i, "CX").Value = relatedJiras
+    Next i
+    
+    ' Notify user that the macro has completed
+    MsgBox "Mapping complete!", vbInformation
+End Sub
