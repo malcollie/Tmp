@@ -1,59 +1,54 @@
-Sub MapJiraIssues()
-    ' Declare variables
+Sub MatchComponents()
     Dim wsJira As Worksheet
-    Dim wsExport As Worksheet
-    Dim lastRowJira As Long
-    Dim lastRowExport As Long
+    Dim wsComponents As Worksheet
+    Dim jiraLastRow As Long
+    Dim compLastRow As Long
     Dim i As Long, j As Long
-    Dim jiraKey As String
-    Dim components As Variant
-    Dim component As String
-    Dim relatedJiras As String
-    Dim k As Long
+    Dim componentsArray() As String
+    Dim comp As Variant
+    Dim matched As Boolean
     
-    ' Set worksheets
-    Set wsJira = ThisWorkbook.Sheets("jira")
-    Set wsExport = ThisWorkbook.Sheets("export")
+    ' Define worksheets
+    Set wsJira = ThisWorkbook.Sheets("JiraData")
+    Set wsComponents = ThisWorkbook.Sheets("Components")
     
-    ' Find the last row with data in each sheet
-    lastRowJira = wsJira.Cells(wsJira.Rows.Count, "B").End(xlUp).Row
-    lastRowExport = wsExport.Cells(wsExport.Rows.Count, "A").End(xlUp).Row
+    ' Find the last row in both sheets
+    jiraLastRow = wsJira.Cells(wsJira.Rows.Count, "A").End(xlUp).Row
+    compLastRow = wsComponents.Cells(wsComponents.Rows.Count, "A").End(xlUp).Row
     
-    ' Loop through each row in the export sheet
-    For i = 2 To lastRowExport
-        ' Get the component from the export sheet
-        component = wsExport.Cells(i, "A").Value
-        relatedJiras = "" ' Initialize relatedJiras as an empty string
-        
-        ' Loop through each row in the jira sheet
-        For j = 2 To lastRowJira
-            ' Split the components in the jira sheet into an array
-            components = Split(wsJira.Cells(j, "C").Value, ", ")
-            
-            ' Loop through the components array
-            For k = LBound(components) To UBound(components)
-                ' Check for exact match of the component
-                If Trim(components(k)) = component Then
-                    ' If match found, get the Jira issue key
-                    jiraKey = wsJira.Cells(j, "B").Value
-                    
-                    ' Append the Jira issue key to relatedJiras
-                    If relatedJiras = "" Then
-                        relatedJiras = jiraKey
+    ' Clear any previous data in the Components sheet's IssueKey column
+    wsComponents.Range("B2:B" & compLastRow).ClearContents
+    
+    ' Loop through each component in the Components sheet
+    For i = 2 To compLastRow
+        matched = False
+        ' Loop through each JIRA issue in the JiraData sheet
+        For j = 2 To jiraLastRow
+            ' Split the components for the current JIRA issue into an array
+            componentsArray = Split(wsJira.Cells(j, 2).Value, ",")
+            ' Check each component in the array
+            For Each comp In componentsArray
+                ' Trim spaces for accurate comparison
+                If Trim(comp) = Trim(wsComponents.Cells(i, 1).Value) Then
+                    ' If match found, set matched flag to True
+                    matched = True
+                    ' Concatenate multiple IssueKeys with a comma
+                    If wsComponents.Cells(i, 2).Value = "" Then
+                        wsComponents.Cells(i, 2).Value = wsJira.Cells(j, 1).Value
                     Else
-                        relatedJiras = relatedJiras & ", " & jiraKey
+                        wsComponents.Cells(i, 2).Value = wsComponents.Cells(i, 2).Value & ", " & wsJira.Cells(j, 1).Value
                     End If
-                    
-                    ' Exit the loop as we found the exact match
-                    Exit For
                 End If
-            Next k
+            Next comp
         Next j
-        
-        ' Write the related Jira keys to column CX in the export sheet
-        wsExport.Cells(i, "CX").Value = relatedJiras
+        ' Print debug information
+        If Not matched Then
+            Debug.Print "No match found for component: " & wsComponents.Cells(i, 1).Value
+        Else
+            Debug.Print "Matches for component " & wsComponents.Cells(i, 1).Value & ": " & wsComponents.Cells(i, 2).Value
+        End If
     Next i
     
-    ' Notify user that the macro has completed
-    MsgBox "Mapping complete!", vbInformation
+    ' Inform the user that the process is complete
+    MsgBox "Component matching complete!"
 End Sub
