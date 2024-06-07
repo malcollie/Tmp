@@ -1,15 +1,14 @@
-Sub MatchComponents()
-
+Sub MatchComponentsOptimized()
     Dim wsJira As Worksheet
     Dim wsExport As Worksheet
     Dim lastRowJira As Long
     Dim lastRowExport As Long
-    Dim jiraRow As Long
-    Dim exportRow As Long
-    Dim compCol As Long
+    Dim jiraData As Variant
+    Dim exportData As Variant
+    Dim resultDict As Object
+    Dim i As Long, j As Long
     Dim issueKey As String
     Dim compValue As String
-    Dim result As String
 
     ' Set the worksheets
     Set wsJira = ThisWorkbook.Sheets("jira")
@@ -19,33 +18,37 @@ Sub MatchComponents()
     lastRowJira = wsJira.Cells(wsJira.Rows.Count, "B").End(xlUp).Row
     lastRowExport = wsExport.Cells(wsExport.Rows.Count, "A").End(xlUp).Row
 
-    ' Loop through each component in the export worksheet
-    For exportRow = 2 To lastRowExport
-        ' Get the component value from the export sheet
-        compValue = wsExport.Cells(exportRow, 1).Value
-        result = ""
+    ' Read the data from the worksheets into arrays
+    jiraData = wsJira.Range("B2:EI" & lastRowJira).Value
+    exportData = wsExport.Range("A2:A" & lastRowExport).Value
 
-        ' Loop through each row in the jira worksheet
-        For jiraRow = 2 To lastRowJira
-            ' Get the issue key from column B
-            issueKey = wsJira.Cells(jiraRow, 2).Value
+    ' Create a dictionary to store results
+    Set resultDict = CreateObject("Scripting.Dictionary")
 
-            ' Loop through each component column (P through EI)
-            For compCol = 16 To 139 ' Columns P (16) through EI (139)
-                If wsJira.Cells(jiraRow, compCol).Value = compValue Then
-                    If result = "" Then
-                        result = issueKey
-                    Else
-                        result = result & ", " & issueKey
-                    End If
-                    Exit For ' Stop looking in other columns if component is found
+    ' Loop through jira data and populate the dictionary
+    For i = 1 To UBound(jiraData, 1)
+        issueKey = jiraData(i, 1)
+        For j = 15 To UBound(jiraData, 2) ' P is the 16th column (15th index in array)
+            compValue = jiraData(i, j)
+            If compValue <> "" Then
+                If Not resultDict.exists(compValue) Then
+                    resultDict.Add compValue, issueKey
+                Else
+                    resultDict(compValue) = resultDict(compValue) & ", " & issueKey
                 End If
-            Next compCol
-        Next jiraRow
+            End If
+        Next j
+    Next i
 
-        ' Put the result in the CX column of the export sheet
-        wsExport.Cells(exportRow, 126).Value = result ' Column CX (126)
-    Next exportRow
+    ' Write the results back to the export worksheet
+    For i = 1 To UBound(exportData, 1)
+        compValue = exportData(i, 1)
+        If resultDict.exists(compValue) Then
+            wsExport.Cells(i + 1, 126).Value = resultDict(compValue) ' Column CX (126)
+        Else
+            wsExport.Cells(i + 1, 126).Value = ""
+        End If
+    Next i
 
     MsgBox "Macro completed!", vbInformation
 
