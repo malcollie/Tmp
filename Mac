@@ -2,46 +2,55 @@ Sub CorrelateJiras()
     Dim wsJira As Worksheet
     Dim wsAssets As Worksheet
     Dim lastRowJira As Long
-    Dim lastColJira As Long
     Dim lastRowAssets As Long
-    Dim i As Long, j As Long, k As Long
+    Dim i As Long, col As Long
     Dim issueKey As String
     Dim component As String
-    Dim found As Boolean
+    Dim componentCols As Collection
+    Dim foundCell As Range
+    Dim firstAddress As String
     Dim existingValue As String
 
     ' Set references to the sheets
     Set wsJira = ThisWorkbook.Sheets("Jira backlog export")
     Set wsAssets = ThisWorkbook.Sheets("asset mapping")
     
-    ' Find the last rows and columns in the sheets
+    ' Find the last rows in the sheets
     lastRowJira = wsJira.Cells(wsJira.Rows.Count, "A").End(xlUp).Row
-    lastColJira = wsJira.Cells(1, wsJira.Columns.Count).End(xlToLeft).Column
     lastRowAssets = wsAssets.Cells(wsAssets.Rows.Count, "A").End(xlUp).Row
-
+    
+    ' Find component columns
+    Set componentCols = New Collection
+    For col = 2 To wsJira.Cells(1, wsJira.Columns.Count).End(xlToLeft).Column
+        If wsJira.Cells(1, col).Value Like "Component*" Then
+            componentCols.Add col
+        End If
+    Next col
+    
     ' Loop through each Asset ID in the asset mapping sheet
     For i = 2 To lastRowAssets ' Assuming the first row is a header
         component = wsAssets.Cells(i, 1).Value ' Asset ID is in column A
 
-        ' Loop through each row in the Jira backlog export sheet
-        For j = 2 To lastRowJira ' Assuming the first row is a header
-            issueKey = wsJira.Cells(j, 1).Value ' Issue key is in column A
-
-            ' Loop through each Component/s column in the current row
-            For k = 2 To lastColJira ' Assuming the first column is Issue key
-                If wsJira.Cells(1, k).Value Like "Component*" Then
-                    If wsJira.Cells(j, k).Value = component Then
-                        existingValue = wsAssets.Cells(i, "DG").Value
-                        If existingValue = "" Then
-                            wsAssets.Cells(i, "DG").Value = issueKey
-                        Else
-                            wsAssets.Cells(i, "DG").Value = existingValue & ", " & issueKey
-                        End If
-                        Exit For
+        ' Loop through each component column
+        For Each col In componentCols
+            ' Find the first match of the component in the current column
+            Set foundCell = wsJira.Columns(col).Find(What:=component, LookIn:=xlValues, LookAt:=xlWhole)
+            If Not foundCell Is Nothing Then
+                firstAddress = foundCell.Address
+                Do
+                    ' Get the issue key from the found row
+                    issueKey = wsJira.Cells(foundCell.Row, 1).Value ' Issue key is in column A
+                    existingValue = wsAssets.Cells(i, "DG").Value
+                    If existingValue = "" Then
+                        wsAssets.Cells(i, "DG").Value = issueKey
+                    Else
+                        wsAssets.Cells(i, "DG").Value = existingValue & ", " & issueKey
                     End If
-                End If
-            Next k
-        Next j
+                    ' Find the next match in the same column
+                    Set foundCell = wsJira.Columns(col).FindNext(foundCell)
+                Loop While Not foundCell Is Nothing And foundCell.Address <> firstAddress
+            End If
+        Next col
     Next i
 
     MsgBox "Correlating Jiras completed!"
