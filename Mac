@@ -1,54 +1,52 @@
 Sub MatchComponents()
+
     Dim wsJira As Worksheet
-    Dim wsComponents As Worksheet
-    Dim jiraLastRow As Long
-    Dim compLastRow As Long
-    Dim i As Long, j As Long
-    Dim componentsArray() As String
-    Dim comp As Variant
-    Dim matched As Boolean
-    
-    ' Define worksheets
-    Set wsJira = ThisWorkbook.Sheets("JiraData")
-    Set wsComponents = ThisWorkbook.Sheets("Components")
-    
-    ' Find the last row in both sheets
-    jiraLastRow = wsJira.Cells(wsJira.Rows.Count, "A").End(xlUp).Row
-    compLastRow = wsComponents.Cells(wsComponents.Rows.Count, "A").End(xlUp).Row
-    
-    ' Clear any previous data in the Components sheet's IssueKey column
-    wsComponents.Range("B2:B" & compLastRow).ClearContents
-    
-    ' Loop through each component in the Components sheet
-    For i = 2 To compLastRow
-        matched = False
-        ' Loop through each JIRA issue in the JiraData sheet
-        For j = 2 To jiraLastRow
-            ' Split the components for the current JIRA issue into an array
-            componentsArray = Split(wsJira.Cells(j, 2).Value, ",")
-            ' Check each component in the array
-            For Each comp In componentsArray
-                ' Trim spaces for accurate comparison
-                If Trim(comp) = Trim(wsComponents.Cells(i, 1).Value) Then
-                    ' If match found, set matched flag to True
-                    matched = True
-                    ' Concatenate multiple IssueKeys with a comma
-                    If wsComponents.Cells(i, 2).Value = "" Then
-                        wsComponents.Cells(i, 2).Value = wsJira.Cells(j, 1).Value
+    Dim wsExport As Worksheet
+    Dim lastRowJira As Long
+    Dim lastRowExport As Long
+    Dim jiraRow As Long
+    Dim exportRow As Long
+    Dim compCol As Long
+    Dim issueKey As String
+    Dim compValue As String
+    Dim result As String
+
+    ' Set the worksheets
+    Set wsJira = ThisWorkbook.Sheets("jira")
+    Set wsExport = ThisWorkbook.Sheets("export")
+
+    ' Get the last row of each worksheet
+    lastRowJira = wsJira.Cells(wsJira.Rows.Count, "B").End(xlUp).Row
+    lastRowExport = wsExport.Cells(wsExport.Rows.Count, "A").End(xlUp).Row
+
+    ' Loop through each component in the export worksheet
+    For exportRow = 2 To lastRowExport
+        ' Get the component value from the export sheet
+        compValue = wsExport.Cells(exportRow, 1).Value
+        result = ""
+
+        ' Loop through each row in the jira worksheet
+        For jiraRow = 2 To lastRowJira
+            ' Get the issue key from column B
+            issueKey = wsJira.Cells(jiraRow, 2).Value
+
+            ' Loop through each component column (P through EI)
+            For compCol = 16 To 139 ' Columns P (16) through EI (139)
+                If wsJira.Cells(jiraRow, compCol).Value = compValue Then
+                    If result = "" Then
+                        result = issueKey
                     Else
-                        wsComponents.Cells(i, 2).Value = wsComponents.Cells(i, 2).Value & ", " & wsJira.Cells(j, 1).Value
+                        result = result & ", " & issueKey
                     End If
+                    Exit For ' Stop looking in other columns if component is found
                 End If
-            Next comp
-        Next j
-        ' Print debug information
-        If Not matched Then
-            Debug.Print "No match found for component: " & wsComponents.Cells(i, 1).Value
-        Else
-            Debug.Print "Matches for component " & wsComponents.Cells(i, 1).Value & ": " & wsComponents.Cells(i, 2).Value
-        End If
-    Next i
-    
-    ' Inform the user that the process is complete
-    MsgBox "Component matching complete!"
+            Next compCol
+        Next jiraRow
+
+        ' Put the result in the CX column of the export sheet
+        wsExport.Cells(exportRow, 126).Value = result ' Column CX (126)
+    Next exportRow
+
+    MsgBox "Macro completed!", vbInformation
+
 End Sub
