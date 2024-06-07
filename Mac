@@ -1,4 +1,6 @@
 Sub CorrelateJiras()
+    On Error GoTo ErrorHandler
+
     Dim wsJira As Worksheet
     Dim wsAssets As Worksheet
     Dim lastRowJira As Long
@@ -54,4 +56,8 @@ Sub CorrelateJiras()
     Next i
 
     MsgBox "Correlating Jiras completed!"
+    Exit Sub
+
+ErrorHandler:
+    MsgBox "Error: " & Err.Description
 End Sub
