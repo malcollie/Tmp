@@ -1,55 +1,48 @@
-Sub MatchComponentsOptimized()
+Sub CorrelateJiras()
     Dim wsJira As Worksheet
-    Dim wsExport As Worksheet
+    Dim wsAssets As Worksheet
     Dim lastRowJira As Long
-    Dim lastRowExport As Long
-    Dim jiraData As Variant
-    Dim exportData As Variant
-    Dim resultDict As Object
-    Dim i As Long, j As Long
+    Dim lastColJira As Long
+    Dim lastRowAssets As Long
+    Dim i As Long, j As Long, k As Long
     Dim issueKey As String
-    Dim compValue As String
+    Dim component As String
+    Dim found As Boolean
+    Dim existingValue As String
 
-    ' Set the worksheets
-    Set wsJira = ThisWorkbook.Sheets("jira")
-    Set wsExport = ThisWorkbook.Sheets("export")
+    ' Set references to the sheets
+    Set wsJira = ThisWorkbook.Sheets("Jira backlog export")
+    Set wsAssets = ThisWorkbook.Sheets("asset mapping")
+    
+    ' Find the last rows and columns in the sheets
+    lastRowJira = wsJira.Cells(wsJira.Rows.Count, "A").End(xlUp).Row
+    lastColJira = wsJira.Cells(1, wsJira.Columns.Count).End(xlToLeft).Column
+    lastRowAssets = wsAssets.Cells(wsAssets.Rows.Count, "A").End(xlUp).Row
 
-    ' Get the last row of each worksheet
-    lastRowJira = wsJira.Cells(wsJira.Rows.Count, "B").End(xlUp).Row
-    lastRowExport = wsExport.Cells(wsExport.Rows.Count, "A").End(xlUp).Row
+    ' Loop through each Asset ID in the asset mapping sheet
+    For i = 2 To lastRowAssets ' Assuming the first row is a header
+        component = wsAssets.Cells(i, 1).Value ' Asset ID is in column A
 
-    ' Read the data from the worksheets into arrays
-    jiraData = wsJira.Range("B2:EI" & lastRowJira).Value
-    exportData = wsExport.Range("A2:A" & lastRowExport).Value
+        ' Loop through each row in the Jira backlog export sheet
+        For j = 2 To lastRowJira ' Assuming the first row is a header
+            issueKey = wsJira.Cells(j, 1).Value ' Issue key is in column A
 
-    ' Create a dictionary to store results
-    Set resultDict = CreateObject("Scripting.Dictionary")
-
-    ' Loop through jira data and populate the dictionary
-    For i = 1 To UBound(jiraData, 1)
-        issueKey = jiraData(i, 1)
-        For j = 15 To UBound(jiraData, 2) ' P is the 16th column (15th index in array)
-            compValue = jiraData(i, j)
-            If compValue <> "" Then
-                If Not resultDict.exists(compValue) Then
-                    resultDict.Add compValue, issueKey
-                Else
-                    resultDict(compValue) = resultDict(compValue) & ", " & issueKey
+            ' Loop through each Component/s column in the current row
+            For k = 2 To lastColJira ' Assuming the first column is Issue key
+                If wsJira.Cells(1, k).Value Like "Component*" Then
+                    If wsJira.Cells(j, k).Value = component Then
+                        existingValue = wsAssets.Cells(i, "DG").Value
+                        If existingValue = "" Then
+                            wsAssets.Cells(i, "DG").Value = issueKey
+                        Else
+                            wsAssets.Cells(i, "DG").Value = existingValue & ", " & issueKey
+                        End If
+                        Exit For
+                    End If
                 End If
-            End If
+            Next k
         Next j
     Next i
 
-    ' Write the results back to the export worksheet
-    For i = 1 To UBound(exportData, 1)
-        compValue = exportData(i, 1)
-        If resultDict.exists(compValue) Then
-            wsExport.Cells(i + 1, 126).Value = resultDict(compValue) ' Column CX (126)
-        Else
-            wsExport.Cells(i + 1, 126).Value = ""
-        End If
-    Next i
-
-    MsgBox "Macro completed!", vbInformation
-
+    MsgBox "Correlating Jiras completed!"
 End Sub
