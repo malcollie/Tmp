@@ -1,46 +1,56 @@
 Sub ConsolidateWorkbooks()
-    Dim wb As Workbook
-    Dim ws As Worksheet
+    Dim wbSource As Workbook
+    Dim wsSource As Worksheet
     Dim wsMaster As Worksheet
     Dim filePath As String
     Dim fileName As String
-    Dim lastRow As Long
     Dim nextRow As Long
-
+    Dim sourceLastRow As Long
+    
     ' Set the folder path where all workbooks are stored
     filePath = "C:\path\to\your\workbooks\"
-
-    ' Create a new worksheet for the consolidated data
+    
+    ' Ensure the file path ends with a backslash
+    If Right(filePath, 1) <> "\" Then filePath = filePath & "\"
+    
+    ' Create a new worksheet for the consolidated data in the current workbook
     Set wsMaster = ThisWorkbook.Sheets(1)
     wsMaster.Name = "ConsolidatedData"
-
+    
     ' Get the first file in the directory
     fileName = Dir(filePath & "*.xlsx")
-
+    
     ' Loop through all files in the directory
     Do While fileName <> ""
         ' Open the workbook
-        Workbooks.Open filePath & fileName
-
+        Set wbSource = Workbooks.Open(filePath & fileName)
+        
         ' Set the worksheet you want to copy data from (assumes first sheet)
-        Set ws = ActiveWorkbook.Sheets(1)
-
+        Set wsSource = wbSource.Sheets(1)
+        
         ' Find the last row with data on the master sheet
         nextRow = wsMaster.Cells(wsMaster.Rows.Count, "A").End(xlUp).Row + 1
-
+        
+        ' Find the last row with data in the source sheet
+        sourceLastRow = wsSource.Cells(wsSource.Rows.Count, "A").End(xlUp).Row
+        
         ' Copy the data from the source sheet to the master sheet
         If nextRow = 2 Then
             ' Copy header row if master sheet is empty
-            ws.Rows(1).EntireRow.Copy Destination:=wsMaster.Rows(1)
+            wsSource.Rows(1).EntireRow.Copy Destination:=wsMaster.Rows(1)
+            nextRow = 2
         End If
-        ws.Rows("2:" & ws.Cells(ws.Rows.Count, "A").End(xlUp).Row).Copy Destination:=wsMaster.Rows(nextRow)
-
+        
+        If sourceLastRow > 1 Then
+            wsSource.Rows("2:" & sourceLastRow).Copy Destination:=wsMaster.Rows(nextRow)
+        End If
+        
         ' Close the source workbook without saving
-        ActiveWorkbook.Close SaveChanges:=False
-
+        wbSource.Close SaveChanges:=False
+        
         ' Get the next file in the directory
         fileName = Dir
     Loop
-
+    
     MsgBox "Data consolidation complete!", vbInformation
 End Sub
