@@ -1,0 +1,46 @@
+Sub ConsolidateWorkbooks()
+    Dim wb As Workbook
+    Dim ws As Worksheet
+    Dim wsMaster As Worksheet
+    Dim filePath As String
+    Dim fileName As String
+    Dim lastRow As Long
+    Dim nextRow As Long
+
+    ' Set the folder path where all workbooks are stored
+    filePath = "C:\path\to\your\workbooks\"
+
+    ' Create a new worksheet for the consolidated data
+    Set wsMaster = ThisWorkbook.Sheets(1)
+    wsMaster.Name = "ConsolidatedData"
+
+    ' Get the first file in the directory
+    fileName = Dir(filePath & "*.xlsx")
+
+    ' Loop through all files in the directory
+    Do While fileName <> ""
+        ' Open the workbook
+        Workbooks.Open filePath & fileName
+
+        ' Set the worksheet you want to copy data from (assumes first sheet)
+        Set ws = ActiveWorkbook.Sheets(1)
+
+        ' Find the last row with data on the master sheet
+        nextRow = wsMaster.Cells(wsMaster.Rows.Count, "A").End(xlUp).Row + 1
+
+        ' Copy the data from the source sheet to the master sheet
+        If nextRow = 2 Then
+            ' Copy header row if master sheet is empty
+            ws.Rows(1).EntireRow.Copy Destination:=wsMaster.Rows(1)
+        End If
+        ws.Rows("2:" & ws.Cells(ws.Rows.Count, "A").End(xlUp).Row).Copy Destination:=wsMaster.Rows(nextRow)
+
+        ' Close the source workbook without saving
+        ActiveWorkbook.Close SaveChanges:=False
+
+        ' Get the next file in the directory
+        fileName = Dir
+    Loop
+
+    MsgBox "Data consolidation complete!", vbInformation
+End Sub
